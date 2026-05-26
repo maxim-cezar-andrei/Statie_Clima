@@ -5,7 +5,6 @@
 #include "hardware/i2c.h"
 #include "hardware/pwm.h"
 
-// --- CONFIGURARE PINI HARDWARE ---
 #define PIN_DHT22      2
 #define PIN_OLED_SDA   4
 #define PIN_OLED_SCL   5
@@ -24,12 +23,10 @@
 #define I2C_PORT       i2c0
 #define OLED_ADDR      0x3C
 
-// --- VARIABILE GLOBALE (PRAGURI) ---
 float temp_minima = 20.0f;
 float temp_maxima = 26.0f;
 float umid_maxima = 60.0f;
 
-// Matrice extinsă pentru caracterele folosite pe OLED (Stocată în Flash)
 const uint8_t font_basic[17][8] = {
     {0x3E, 0x51, 0x49, 0x45, 0x3E, 0x00, 0x00, 0x00}, // 0
     {0x00, 0x42, 0x7F, 0x40, 0x00, 0x00, 0x00, 0x00}, // 1
@@ -50,39 +47,50 @@ const uint8_t font_basic[17][8] = {
     {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}  // Spațiu gol
 };
 
-// Funcție care convertește un caracter ASCII în indexul corect din matricea noastră
 int get_font_idx(char c) {
-    if (c >= '0' && c <= '9') return c - '0';
-    if (c == ':') return 10;
-    if (c == '-') return 11;
-    if (c == '.') return 12;
-    if (c == 'T') return 13;
-    if (c == 'M') return 14;
-    if (c == '%') return 15;
-    return 16; // Spațiu gol implicit
+    if (c >= '0' && c <= '9') 
+        return c - '0';
+    if (c == ':') 
+        return 10;
+    if (c == '-') 
+        return 11;
+    if (c == '.') 
+        return 12;
+    if (c == 'T') 
+        return 13;
+    if (c == 'M') 
+        return 14;
+    if (c == '%') 
+        return 15;
+    return 16;
 }
 
-// --- DRIVER OLED SSD1306 (LOW-LEVEL CODES) ---
-void oled_cmd(uint8_t cmd) {
+void oled_cmd(uint8_t cmd) 
+{
     uint8_t buf[2] = {0x00, cmd};
     i2c_write_blocking(I2C_PORT, OLED_ADDR, buf, 2, false);
 }
 
-void oled_init() {
+void oled_init() 
+{
     uint8_t init_cmds[] = {
         0xAE, 0x20, 0x00, 0x40, 0xA1, 0xA8, 31, 0xC8, 
         0xD3, 0x00, 0xDA, 0x02, 0xD5, 0x80, 0xD9, 0xF1, 
         0xDB, 0x30, 0x81, 0xFF, 0xA6, 0xA4, 0x8D, 0x14, 0xAF
     };
-    for (int i = 0; i < sizeof(init_cmds); i++) oled_cmd(init_cmds[i]);
+    for (int i = 0; i < sizeof(init_cmds); i++) 
+        oled_cmd(init_cmds[i]);
 }
 
-void oled_clear_pages() {
+void oled_clear_pages() 
+{
     uint8_t clear_buf[129];
     clear_buf[0] = 0x40;
-    for(int i=1; i<=128; i++) clear_buf[i] = 0x00;
+    for(int i=1; i<=128; i++) 
+        clear_buf[i] = 0x00;
     
-    for (uint8_t p = 0; p < 4; p++) {
+    for (uint8_t p = 0; p < 4; p++) 
+    {
         oled_cmd(0xB0 | p);
         oled_cmd(0x00);
         oled_cmd(0x10);
@@ -90,7 +98,8 @@ void oled_clear_pages() {
     }
 }
 
-void oled_print_char_8x8(uint8_t page, uint8_t col, int font_idx) {
+void oled_print_char_8x8(uint8_t page, uint8_t col, int font_idx) 
+{
     oled_cmd(0xB0 | page);
     oled_cmd(col & 0x0F);
     oled_cmd(0x10 | ((col >> 4) & 0x0F));
@@ -101,41 +110,41 @@ void oled_print_char_8x8(uint8_t page, uint8_t col, int font_idx) {
     i2c_write_blocking(I2C_PORT, OLED_ADDR, data_buf, 9, false);
 }
 
-// --- DRIVER OLED SSD1306 (HIGH-LEVEL CODES) ---
-void oled_putstr(uint8_t page, uint8_t col, const char *str) {
+void oled_putstr(uint8_t page, uint8_t col, const char *str) 
+{
     int x = col;
     while (*str) {
         int idx = get_font_idx(*str);
         oled_print_char_8x8(page, x, idx);
-        x += 8; // Fiecare caracter are o lățime de 8 pixeli
+        x += 8; 
         str++;
     }
 }
 
-void actualizeaza_ecran_oled() {
+void actualizeaza_ecran_oled() 
+{
     oled_clear_pages();
     
     char buf1[16];
     char buf2[16];
     
-    // Formatăm textul dinamic cu valorile curente ale pragurilor salvate în memorie
     sprintf(buf1, "T:%.1f-%.1f", temp_minima, temp_maxima);
     sprintf(buf2, "M:%.1f%%", umid_maxima);
     
-    // Scriem pe ecranul OLED: buf1 pe rândul de sus, buf2 pe rândul de jos
-    oled_putstr(0, 0, buf1);  // Pagina 0 (Rândul 1)
-    oled_putstr(2, 0, buf2);  // Pagina 2 (Rândul 2)
+    oled_putstr(0, 0, buf1); 
+    oled_putstr(2, 0, buf2); 
 }
 
-// --- DRIVER LCD 1602 ---
-void lcd_pulse_enable() {
+void lcd_pulse_enable() 
+{
     gpio_put(PIN_LCD_E, 1);
     sleep_us(1);
     gpio_put(PIN_LCD_E, 0);
     sleep_us(100);
 }
 
-void lcd_write_nibble(uint8_t nibble) {
+void lcd_write_nibble(uint8_t nibble) 
+{
     gpio_put(PIN_LCD_D4, (nibble >> 0) & 0x01);
     gpio_put(PIN_LCD_D5, (nibble >> 1) & 0x01);
     gpio_put(PIN_LCD_D6, (nibble >> 2) & 0x01);
@@ -143,37 +152,45 @@ void lcd_write_nibble(uint8_t nibble) {
     lcd_pulse_enable();
 }
 
-void lcd_send(uint8_t value, bool mode) {
+void lcd_send(uint8_t value, bool mode) 
+{
     gpio_put(PIN_LCD_RS, mode);
     lcd_write_nibble(value >> 4);
     lcd_write_nibble(value & 0x0F);
 }
 
-void lcd_command(uint8_t cmd) {
+void lcd_command(uint8_t cmd) 
+{
     lcd_send(cmd, false);
     sleep_ms(2);
 }
 
-void lcd_write_char(uint8_t ch) {
+void lcd_write_char(uint8_t ch) 
+{
     lcd_send(ch, true);
 }
 
-void lcd_clear() {
+void lcd_clear() 
+{
     lcd_command(0x01);
 }
 
-void lcd_move_to(uint8_t col, uint8_t row) {
+void lcd_move_to(uint8_t col, uint8_t row) 
+{
     uint8_t offsets[] = {0x00, 0x40};
     lcd_command(0x80 | (col + offsets[row]));
 }
 
-void lcd_putstr(const char *str) {
-    while (*str) {
+void lcd_putstr(const char *str) 
+{
+    while (*str) 
+    {
         lcd_write_char(*str++);
     }
 }
 
-void lcd_init() {
+void lcd_init() 
+{
     gpio_init(PIN_LCD_RS); gpio_set_dir(PIN_LCD_RS, GPIO_OUT);
     gpio_init(PIN_LCD_E);  gpio_set_dir(PIN_LCD_E, GPIO_OUT);
     gpio_init(PIN_LCD_D4); gpio_set_dir(PIN_LCD_D4, GPIO_OUT);
@@ -195,19 +212,24 @@ void lcd_init() {
     lcd_clear();
 }
 
-// --- SECTOR CITIRE BUTOANE (ADC PE 12 BIȚI) ---
-const char* citeste_buton() {
-    uint16_t valoare = adc_read(); // Valori între 0 și 4095
-    if (valoare < 187)   return "RIGHT";
-    if (valoare < 750)   return "UP";
-    if (valoare < 2000)  return "DOWN";
-    if (valoare < 3000)  return "LEFT";
-    if (valoare < 4050)  return "SELECT";
+const char* citeste_buton() 
+{
+    uint16_t valoare = adc_read();
+    if (valoare < 187)   
+        return "RIGHT";
+    if (valoare < 750)   
+        return "UP";
+    if (valoare < 2000)  
+        return "DOWN";
+    if (valoare < 3000)  
+        return "LEFT";
+    if (valoare < 4050)     
+        return "SELECT";
     return "NONE";
 }
 
-// --- BIT-BANGING DE PRECIZIE DHT22 ---
-bool dht22_read(float *temp, float *humidity) {
+bool dht22_read(float *temp, float *humidity) 
+{
     uint8_t data[5] = {0,0,0,0,0};
     
     gpio_set_dir(PIN_DHT22, GPIO_OUT);
@@ -219,20 +241,35 @@ bool dht22_read(float *temp, float *humidity) {
     gpio_set_dir(PIN_DHT22, GPIO_IN);
     
     uint32_t timeout = 10000;
-    while(gpio_get(PIN_DHT22) == 1) { if(--timeout == 0) return false; }
-    while(gpio_get(PIN_DHT22) == 0) { if(--timeout == 0) return false; }
-    while(gpio_get(PIN_DHT22) == 1) { if(--timeout == 0) return false; }
+    while(gpio_get(PIN_DHT22) == 1) 
+    { 
+        if(--timeout == 0) 
+        return false; 
+    }
+    while(gpio_get(PIN_DHT22) == 0) 
+    { 
+        if(--timeout == 0) 
+        return false; 
+    }
+    while(gpio_get(PIN_DHT22) == 1) 
+    { 
+        if(--timeout == 0) 
+        return false; 
+    }
     
-    for (int i = 0; i < 40; i++) {
+    for (int i = 0; i < 40; i++) 
+    {
         while(gpio_get(PIN_DHT22) == 0);
         uint32_t start_time = time_us_32();
         while(gpio_get(PIN_DHT22) == 1);
-        if ((time_us_32() - start_time) > 40) {
+        if ((time_us_32() - start_time) > 40) 
+        {
             data[i / 8] |= (1 << (7 - (i % 8)));
         }
     }
     
-    if (data[4] == ((data[0] + data[1] + data[2] + data[3]) & 0xFF)) {
+    if (data[4] == ((data[0] + data[1] + data[2] + data[3]) & 0xFF)) 
+    {
         *humidity = ((data[0] << 8) | data[1]) * 0.1f;
         int16_t raw_temp = ((data[2] & 0x7F) << 8) | data[3];
         if (data[2] & 0x80) raw_temp = -raw_temp;
@@ -242,21 +279,21 @@ bool dht22_read(float *temp, float *humidity) {
     return false;
 }
 
-// --- ARHITECTURĂ CONTROL BUZZER (PWM) ---
-void set_buzzer(bool active) {
+void set_buzzer(bool active) 
+{
     uint slice_num = pwm_gpio_to_slice_num(PIN_BUZZER);
-    if(active) {
+    if(active) 
+    {
         pwm_set_chan_level(slice_num, PWM_CHAN_B, 31250); // 50% Duty Cycle
-    } else {
-        pwm_set_chan_level(slice_num, PWM_CHAN_B, 0);     // Oprit
+    } 
+    else {
+        pwm_set_chan_level(slice_num, PWM_CHAN_B, 0); // Oprit
     }
 }
 
-// --- PROGRAMUL PRINCIPAL ---
 int main() {
     stdio_init_all();
     
-    // 1. Inițializare I2C (Ecran OLED)
     i2c_init(I2C_PORT, 400000);
     gpio_set_function(PIN_OLED_SDA, GPIO_FUNC_I2C);
     gpio_set_function(PIN_OLED_SCL, GPIO_FUNC_I2C);
@@ -264,7 +301,6 @@ int main() {
     gpio_pull_up(PIN_OLED_SCL);
     oled_init();
     
-    // 2. Inițializare LCD și Periferice
     lcd_init();
 
     gpio_init(PIN_DHT22);
@@ -274,11 +310,13 @@ int main() {
     adc_gpio_init(PIN_ADC_BTNS);
     adc_select_input(0);
     
-    gpio_init(PIN_LED_V); gpio_set_dir(PIN_LED_V, GPIO_OUT);
-    gpio_init(PIN_LED_R); gpio_set_dir(PIN_LED_R, GPIO_OUT);
-    gpio_init(PIN_RELEU); gpio_set_dir(PIN_RELEU, GPIO_OUT);
+    gpio_init(PIN_LED_V); 
+    gpio_set_dir(PIN_LED_V, GPIO_OUT);
+    gpio_init(PIN_LED_R); 
+    gpio_set_dir(PIN_LED_R, GPIO_OUT);
+    gpio_init(PIN_RELEU); 
+    gpio_set_dir(PIN_RELEU, GPIO_OUT);
     
-    // 3. Configurare Setări PWM Hardware (Buzzer la 1kHz)
     gpio_set_function(PIN_BUZZER, GPIO_FUNC_PWM);
     uint slice_num = pwm_gpio_to_slice_num(PIN_BUZZER);
     pwm_set_clkdiv(slice_num, 2.0f); 
@@ -290,16 +328,23 @@ int main() {
     actualizeaza_ecran_oled();
     sleep_ms(500);
 
-    while (true) {
-        // --- SECTOR 1: SCANARE ASINCRONĂ BUTOANE ---
-        for (int i = 0; i < 20; i++) {
+    while (true) 
+    {
+        for (int i = 0; i < 20; i++) 
+        {
             const char* buton = citeste_buton();
-            if (buton != "NONE") {
-                if (buton == "UP")        temp_maxima += 0.5f;
-                else if (buton == "DOWN")  temp_maxima -= 0.5f;
-                else if (buton == "RIGHT") temp_minima += 0.5f;
-                else if (buton == "LEFT")  temp_minima -= 0.5f;
-                else if (buton == "SELECT") {
+            if (buton != "NONE") 
+            {
+                if (buton == "UP")        
+                    temp_maxima += 0.5f;
+                else if (buton == "DOWN")  
+                    temp_maxima -= 0.5f;
+                else if (buton == "RIGHT") 
+                    temp_minima += 0.5f;
+                else if (buton == "LEFT")  
+                    temp_minima -= 0.5f;
+                else if (buton == "SELECT") 
+                {
                     temp_minima = 20.0f;
                     temp_maxima = 26.0f;
                     umid_maxima = 60.0f;
@@ -308,7 +353,8 @@ int main() {
                     gpio_put(PIN_RELEU, 0);
                 }
                 
-                if (temp_minima >= temp_maxima) temp_minima = temp_maxima - 0.5f;
+                if (temp_minima >= temp_maxima) 
+                    temp_minima = temp_maxima - 0.5f;
                 actualizeaza_ecran_oled();
                 sleep_ms(500);
                 break;
@@ -316,9 +362,9 @@ int main() {
             sleep_ms(10);
         }
 
-        // --- SECTOR 2: CONDIȚII METEO ȘI DECIZIE ---
         float t_actuala = 0, u_actuala = 0;
-        if (dht22_read(&t_actuala, &u_actuala)) {
+        if (dht22_read(&t_actuala, &u_actuala)) 
+        {
             lcd_clear();
             lcd_move_to(0, 0);
             char buffer_lcd[16];
@@ -330,23 +376,31 @@ int main() {
             bool temp_ok = (t_actuala >= temp_minima && t_actuala <= temp_maxima);
             bool umid_ok = (u_actuala <= umid_maxima);
             
-            if (temp_ok && umid_ok) {
+            if (temp_ok && umid_ok) 
+            {
                 gpio_put(PIN_LED_V, 1);
                 gpio_put(PIN_LED_R, 0);
                 gpio_put(PIN_RELEU, 0);
                 set_buzzer(false);
-            } else {
+            } 
+            else 
+            {
                 gpio_put(PIN_LED_V, 0);
                 gpio_put(PIN_LED_R, 1);
                 gpio_put(PIN_RELEU, 1);
                 
-                if (t_actuala >= (temp_maxima + 5.0f) || t_actuala <= (temp_minima - 5.0f)) {
+                if (t_actuala >= (temp_maxima + 5.0f) || t_actuala <= (temp_minima - 5.0f)) 
+                {
                     set_buzzer(true);
-                } else {
+                } 
+                else 
+                {
                     set_buzzer(false);
                 }
             }
-        } else {
+        } 
+        else 
+        {
             lcd_clear();
             lcd_move_to(0, 0);
             lcd_putstr("Eroare Senzor!");
