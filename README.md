@@ -113,43 +113,59 @@ The application uses a **polling-based, blocking execution model**.
 
 ```mermaid
 flowchart TD
-    START([Power on]) --> INIT["Initialize I2C, LCD, DHT22 GPIO, ADC, LEDs, relay, and PWM"]
+    START([START - Pornire Instalație C]) --> INIT["Inițializare Periferice C<br>(Pico SDK: GPIO, ADC, I2C, PWM)"]
+    INIT --> BOOT["Afișare Mesaj Startup pe LCD<br>Afișare Limite Standard pe OLED"]
+    BOOT --> SCAN_START["Pornire Scanare Instantanee Butoane<br>(Citire la fiecare 10ms)"]
+    
+    %% Citire și Procesare Butoane (VALORI NOI PE 12 BIȚI PENTRU C)
+    SCAN_START --> READ_ADC["Citire Tensiune Nativă ADC0 12 biți<br>(Valori între 0 - 4095)"]
+    READ_ADC --> CHECK_BTN{Ce buton<br>e detectat?}
+    
+    CHECK_BTN -->|valoare < 750| UP["Crește Max Termic<br>(Max += 0.5°C)"]
+    CHECK_BTN -->|valoare < 2000| DN["Scade Max Termic<br>(Max -= 0.5°C)"]
+    CHECK_BTN -->|valoare < 3000| LF["Scade Min Termic<br>(Min -= 0.5°C)"]
+    CHECK_BTN -->|valoare < 4050| SL["RESET GENERAL<br>(Revenire la 20°C / 26°C)"]
+    CHECK_BTN -->|BTN_NONE| REFRESH_DHT["Verifică cronometru senzor"]
+    
+    UP --> UPD_OLED["Actualizare Pixeli OLED"]
+    DN --> UPD_OLED
+    LF --> UPD_OLED
+    SL --> UPD_OLED
+    
+    UPD_OLED --> DELAY_DEBOUNCE["Sleep 180ms<br>(Anti-Debounce Hardware)"]
+    DELAY_DEBOUNCE --> REFRESH_DHT
+    
+    %% Citire Date DHT22 (Asincronă în C)
+    REFRESH_DHT --> TIMER_CHECK{Au trecut<br>2.0 secunde?}
+    
+    TIMER_CHECK -->|NU| SCAN_START
+    TIMER_CHECK -->|DA| TRY_DHT["M Măsurare Date DHT22<br>(Rutină de precizie în microsecunde)"]
+    
+    TRY_DHT --> PRINT_LCD["Afișare Temp și Umiditate curentă<br>pe cele 2 rânduri LCD"]
+    
+    %% Logica de Evaluare Climat
+    PRINT_LCD --> EVAL_WINDOW{Sunt parametrii în interiorul<br>ferestrei de confort setate?}
+    
+    EVAL_WINDOW -->|DA - Sistem OK| ST_SAFE["LED Verde = 1<br>LED Roșu = 0<br>Releu = 0<br>PWM Level = 0 (Buzzer Oprit)"]
+    EVAL_WINDOW -->|NU - Alertă| ST_ALARM["LED Verde = 0<br>LED Roșu = 1<br>Releu = 1"]
+    
+    ST_ALARM --> EVAL_CRITIC{Temperatura reală depășește<br>limita cu mai mult de 5.0°C?}
+    
+    EVAL_CRITIC -->|DA| BUZZ_ON["PWM Level = 31250<br>(Țiuit Hardware Urgență - 1kHz)"]
+    EVAL_CRITIC -->|NU| BUZZ_OFF["PWM Level = 0<br>(Rămâne silențios)"]
+    
+    ST_SAFE --> SCAN_START
+    BUZZ_ON --> SCAN_START
+    BUZZ_OFF --> SCAN_START
 
-    INIT --> DISPLAY["Show startup message and default thresholds"]
-
-    DISPLAY --> POLL["Poll ADC buttons<br/>Up to 20 checks, 10 ms apart"]
-
-    POLL --> BTN{"Button recognized?"}
-
-    BTN -->|"Yes"| UPDATE["Update temperature limit or restore defaults<br/>Refresh OLED"]
-
-    UPDATE --> PAUSE["Blocking pause: 500 ms"]
-
-    PAUSE --> DHT
-
-    BTN -->|"No"| DHT{"Valid DHT22 data and checksum?"}
-
-    DHT -->|"No"| ERROR["Show sensor error on LCD"]
-
-    ERROR --> POLL
-
-    DHT -->|"Yes"| MEASURE["Display temperature and humidity on LCD"]
-
-    MEASURE --> LIMITS{"Within temperature and humidity limits?"}
-
-    LIMITS -->|"Yes"| NORMAL["Green LED ON<br/>Red LED, relay and buzzer OFF"]
-
-    LIMITS -->|"No"| ALARM["Red LED and relay ON<br/>Green LED OFF"]
-
-    ALARM --> CRIT{"Temperature at least 5 C beyond a limit?"}
-
-    CRIT -->|"Yes"| SOUND["Enable buzzer PWM duty cycle"]
-
-    CRIT -->|"No"| SILENT["Disable buzzer PWM duty cycle"]
-
-    NORMAL --> POLL
-    SOUND --> POLL
-    SILENT --> POLL
+    %% Culori profesionale pentru organigramă
+    classDef startEnd fill:#A2D149,stroke:#333,stroke-width:2px,color:#000;
+    classDef proces fill:#FFF,stroke:#333,stroke-width:1px,color:#000;
+    classDef decizie fill:#FFCC00,stroke:#333,stroke-width:1px,color:#000;
+    
+    class START startEnd;
+    class INIT,BOOT,SCAN_START,READ_ADC,UP,DN,LF,SL,UPD_OLED,DELAY_DEBOUNCE,TRY_DHT,PRINT_LCD,ST_SAFE,ST_ALARM,BUZZ_ON,BUZZ_OFF proces;
+    class CHECK_BTN,EVAL_WINDOW,EVAL_CRITIC,TIMER_CHECK decizie;
 ```
 
 
