@@ -159,13 +159,13 @@ graph TD
 
 ### 2. Procesul de Testare și Integrare HW-SW
 
-1. **Interpretarea valorilor ADC: Cele 5 butoane sunt conectate la un singur canal ADC printr-o rețea rezistivă. Identificarea butonului apăsat se realizează prin compararea valorii returnate de `adc_read()` cu intervale numerice prestabilite. Utilizarea intervalelor, în locul unor valori exacte, permite tolerarea variațiilor semnalului analogic.
+1. **Interpretarea valorilor ADC:** Cele 5 butoane sunt conectate la un singur canal ADC printr-o rețea rezistivă. Identificarea butonului apăsat se realizează prin compararea valorii returnate de `adc_read()` cu intervale numerice prestabilite. Utilizarea intervalelor, în locul unor valori exacte, permite tolerarea variațiilor semnalului analogic.
 
-2. **Configurarea perifericului PWM: Pinul GPIO17 este configurat pentru funcționarea PWM utilizând `gpio_set_function()`. Controlul buzzerului se realizează prin modificarea factorului de umplere cu `pwm_set_chan_level()`, permițând pornirea și oprirea alarmei sonore fără generarea continuă a semnalului prin software.
+2. **Configurarea perifericului PWM:** Pinul GPIO17 este configurat pentru funcționarea PWM utilizând `gpio_set_function()`. Controlul buzzerului se realizează prin modificarea factorului de umplere cu `pwm_set_chan_level()`, permițând pornirea și oprirea alarmei sonore fără generarea continuă a semnalului prin software.
 
 3. **Optimizarea afișajului OLED 128×32:** Ecranul de 128×32 pixeli nu permitea afișarea a 3 rânduri de text fără suprapunerea pixelilor. Informația a fost compactată pe două rânduri aerisite, cu coordonatele Y=0 și Y=16, asigurând lizibilitate maximă.
 
-4. **Gestionarea temporizărilor: Scanarea butoanelor se realizează prin interogarea periodică a canalului ADC, utilizând o întârziere de 10 ms între verificări în bucla de scanare. După detectarea unei apăsări este introdusă o întârziere suplimentară de 500 ms. Citirea senzorului DHT22 se realizează secvențial, utilizând temporizări pentru comunicarea cu senzorul.
+4. **Gestionarea temporizărilor:** Scanarea butoanelor se realizează prin interogarea periodică a canalului ADC, utilizând o întârziere de 10 ms între verificări în bucla de scanare. După detectarea unei apăsări este introdusă o întârziere suplimentară de 500 ms. Citirea senzorului DHT22 se realizează secvențial, utilizând temporizări pentru comunicarea cu senzorul.
 
 ---
 
