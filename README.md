@@ -159,7 +159,7 @@ graph TD
 
 ### 2. Procesul de Testare și Integrare HW-SW
 
-1. **Rezolvarea problemei de toleranță ADC:** Toleranța rezistențelor din rețea făcea ca butonul DOWN să returneze valoarea `25910` în loc de cea teoretică fixă. Problema a fost rezolvată prin extinderea ferestrei software de comparare la `< 32000`, acoperind variațiile reale ale componentelor.
+1. **Interpretarea valorilor ADC: Cele 5 butoane sunt conectate la un singur canal ADC printr-o rețea rezistivă. Identificarea butonului apăsat se realizează prin compararea valorii returnate de `adc_read()` cu intervale numerice prestabilite. Utilizarea intervalelor, în locul unor valori exacte, permite tolerarea variațiilor semnalului analogic.
 
 2. **Configurarea perifericului PWM: Pinul GPIO17 este configurat pentru funcționarea PWM utilizând `gpio_set_function()`. Controlul buzzerului se realizează prin modificarea factorului de umplere cu `pwm_set_chan_level()`, permițând pornirea și oprirea alarmei sonore fără generarea continuă a semnalului prin software.
 
