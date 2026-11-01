@@ -26,7 +26,7 @@ Acest repository conține documentația tehnică completă și codul sursă pent
 - **Economie de Resurse:** Maparea a 5 butoane independente pe un singur pin analogic ADC0 (GP26) utilizând o rețea rezistivă, reducând numărul de pini GPIO consumați.
 - **Fiabilitate și Precizie:** Interogarea senzorului DHT22 la intervale de minimum 2 secunde pentru a preveni auto-încălzirea elementului intern și a asigura citiri corecte.
 - **Toleranță la Erori (Fault Tolerance):** Rutinele de comunicație cu senzorul returnează coduri de eroare verificate explicit, prevenind blocarea sistemului în cazul deconectării fizice sau al unui timeout pe magistrala 1-Wire.
-- **Execuție Non-Blocantă:** Scanarea asincronă a butoanelor cu latență sub 50 ms, oferind o interfață fluidă fără a bloca ciclul de preluare a datelor. Eliminarea completă a apelurilor `sleep_ms()` din bucla principală.
+- **Gestionarea temporizărilor:** Aplicația utilizează temporizări prin `sleep_ms()` pentru scanarea butoanelor și pentru anumite operații hardware. Controlul buzzerului este realizat prin perifericul PWM, fără generarea software continuă a semnalului.
 - **Degrevarea Procesorului:** Alarma termică utilizează perifericul hardware PWM la ~1 kHz cu factor de umplere 50%, sunetul fiind generat independent de CPU fără a consuma resurse de procesare suplimentare.
 
 ### 3. Scenarii de Testare
@@ -161,11 +161,11 @@ graph TD
 
 1. **Rezolvarea problemei de toleranță ADC:** Toleranța rezistențelor din rețea făcea ca butonul DOWN să returneze valoarea `25910` în loc de cea teoretică fixă. Problema a fost rezolvată prin extinderea ferestrei software de comparare la `< 32000`, acoperind variațiile reale ale componentelor.
 
-2. **Rezolvarea conflictului PWM pe GPIO 17:** Blocarea la runtime a pinului GP17 apărea din cauza declarării simultane ca `Pin.OUT` și ca obiect `PWM`. Soluția a fost declararea exclusivă ca obiect PWM cu factor de umplere inițial `0`, activarea sonoră realizându-se exclusiv prin modificarea duty-cycle-ului.
+2. **Configurarea perifericului PWM: Pinul GPIO17 este configurat pentru funcționarea PWM utilizând `gpio_set_function()`. Controlul buzzerului se realizează prin modificarea factorului de umplere cu `pwm_set_chan_level()`, permițând pornirea și oprirea alarmei sonore fără generarea continuă a semnalului prin software.
 
 3. **Optimizarea afișajului OLED 128×32:** Ecranul de 128×32 pixeli nu permitea afișarea a 3 rânduri de text fără suprapunerea pixelilor. Informația a fost compactată pe două rânduri aerisite, cu coordonatele Y=0 și Y=16, asigurând lizibilitate maximă.
 
-4. **Validarea logicii non-blocante:** S-a confirmat că scanarea butoanelor se realizează o dată la 10 ms, iar citirea senzorului exact o dată la 500 ms prin verificarea ceasului intern al plăcii, fără nicio blocare a buclei principale.
+4. **Gestionarea temporizărilor: Scanarea butoanelor se realizează prin interogarea periodică a canalului ADC, utilizând o întârziere de 10 ms între verificări în bucla de scanare. După detectarea unei apăsări este introdusă o întârziere suplimentară de 500 ms. Citirea senzorului DHT22 se realizează secvențial, utilizând temporizări pentru comunicarea cu senzorul.
 
 ---
 
